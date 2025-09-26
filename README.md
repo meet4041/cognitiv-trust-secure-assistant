@@ -1,4 +1,4 @@
-# Cognitiv Secure Code Assistant
+# Cognitiv Trust Secure Code Assistant
 
 A VS Code extension that scans your code using Semgrep to detect insecure patterns and surfaces them as Diagnostics with optional Quick Fixes.
 
