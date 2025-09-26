@@ -1,80 +1,112 @@
 import * as vscode from 'vscode';
 import { enrichPrompt } from './promptEnricher';
-import { scanFileForIssues, Issue } from './scanner';
+import { scanFileForIssues, createDiagnostics, Issue } from './scanner';
 import { applyQuickFix } from './fixes';
-
-// Issue type now imported from scanner
 
 let diagnosticCollection: vscode.DiagnosticCollection;
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('✅ Cognitiv Secure Code Assistant activated.');
+  console.log('✅ Cognitiv Secure Code Assistant activated.');
 
-    diagnosticCollection = vscode.languages.createDiagnosticCollection('cognitiv');
-    context.subscriptions.push(diagnosticCollection);
+  diagnosticCollection = vscode.languages.createDiagnosticCollection('cognitiv');
+  context.subscriptions.push(diagnosticCollection);
 
-    // Command: Manual scan
-    context.subscriptions.push(
-        vscode.commands.registerCommand('cognitiv.scanCode', async () => {
-            const editor = vscode.window.activeTextEditor;
-            if (!editor) { return; }
-            await scanAndReport(editor.document);
-        })
-    );
+  // Command: Manual scan
+  context.subscriptions.push(
+    vscode.commands.registerCommand('cognitiv.scanCode', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) return;
+      await scanAndReport(editor.document);
+    })
+  );
 
-    // Hook: Scan on save – only for Python files
-    context.subscriptions.push(
-        vscode.workspace.onDidSaveTextDocument(async (doc) => {
-            if (doc.languageId === 'python') {
-                console.log(`🔍 Scanning saved file: ${doc.fileName}`);
-                await scanAndReport(doc);
-            }
-        })
-    );
+  // Hook: Scan on save – only for Python files
+  context.subscriptions.push(
+    vscode.workspace.onDidSaveTextDocument(async (doc) => {
+      if (doc.languageId === 'python') {
+        console.log(`🔍 Scanning saved file: ${doc.fileName}`);
+        await scanAndReport(doc);
+      }
+    })
+  );
 
-    // Example prompt enrichment usage (optional)
-    vscode.workspace.onDidChangeTextDocument((event) => {
-        if (event.document.languageId === 'markdown') {
-            const enriched = enrichPrompt(event.document.getText());
-            console.log('🔐 Enriched Prompt:', enriched);
-        }
-    });
-}
+  // Code-action (Quick-Fix) provider
+  context.subscriptions.push(
+    vscode.languages.registerCodeActionsProvider(
+      { language: 'python' },
+      new CognitivQuickFixProvider(),
+      { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] }
+    )
+  );
 
-async function scanAndReport(doc: vscode.TextDocument) {
-    const issues: Issue[] = await scanFileForIssues(doc.fileName);
-    console.log('🔎 Issues found:', issues);
-
-    diagnosticCollection.clear();
-
-    if (issues.length === 0) {
-        vscode.window.showInformationMessage('✅ No security issues found.');
-        return;
+  // Example prompt enrichment usage (optional)
+  vscode.workspace.onDidChangeTextDocument((event) => {
+    if (event.document.languageId === 'markdown') {
+      const enriched = enrichPrompt(event.document.getText());
+      console.log('🔐 Enriched Prompt:', enriched);
     }
+  });
+}
 
-    const diagnostics: vscode.Diagnostic[] = [];
+/**
+ * Scans a document with Semgrep and reports the diagnostics.
+ */
+async function scanAndReport(doc: vscode.TextDocument) {
+  const issues: Issue[] = await scanFileForIssues(doc.fileName);
+  console.log('🔎 Issues found:', issues);
 
-    issues.forEach((issue: Issue) => {
-        diagnostics.push(
-            new vscode.Diagnostic(
-                new vscode.Range(
-                    new vscode.Position(issue.line - 1, 0),
-                    new vscode.Position(issue.line - 1, 100)
-                ),
-                issue.message,
-                vscode.DiagnosticSeverity.Warning
-            )
+  diagnosticCollection.clear();
+
+  if (issues.length === 0) {
+    vscode.window.showInformationMessage('✅ No security issues found.');
+    return;
+  }
+
+  // Use the helper from scanner.ts
+  const diagnostics = createDiagnostics(issues);
+  diagnosticCollection.set(doc.uri, diagnostics);
+}
+
+/**
+ * Code-Action provider that displays “Apply Fix” in the light-bulb menu.
+ */
+class CognitivQuickFixProvider implements vscode.CodeActionProvider {
+  provideCodeActions(
+    document: vscode.TextDocument,
+    range: vscode.Range,
+    context: vscode.CodeActionContext
+  ): vscode.CodeAction[] {
+    const actions: vscode.CodeAction[] = [];
+
+    context.diagnostics.forEach((diag) => {
+      if (diag.code === 'hardcoded-secret') {
+        const action = new vscode.CodeAction(
+          '🔧 Apply Fix: Remove hardcoded secret',
+          vscode.CodeActionKind.QuickFix
         );
-
-        // Show a popup with Apply Fix option
-        vscode.window.showWarningMessage(issue.message, 'Apply Fix').then(selection => {
-            if (selection === 'Apply Fix') {
-                applyQuickFix(doc, issue);
-            }
-        });
+        action.command = {
+          title: 'Apply Fix',
+          command: 'cognitiv.applyQuickFix',
+          arguments: [document, diag]
+        };
+        actions.push(action);
+      }
     });
 
-    diagnosticCollection.set(doc.uri, diagnostics);
+    return actions;
+  }
 }
+
+// Register the actual command used by the Quick-Fix action
+vscode.commands.registerCommand('cognitiv.applyQuickFix', (doc: vscode.TextDocument, diag: vscode.Diagnostic) => {
+  applyQuickFix(doc, {
+    line: diag.range.start.line + 1,
+    endLine: diag.range.end.line + 1,
+    column: diag.range.start.character + 1,
+    endColumn: diag.range.end.character + 1,
+    message: diag.message,
+    code: typeof diag.code === 'string' ? diag.code : (diag.code != null ? String(diag.code) : undefined)
+  });
+});
 
 export function deactivate() {}

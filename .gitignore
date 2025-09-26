@@ -27,3 +27,11 @@ coverage/
 # Env
 .env
 .env.*.local
+
+# Samples and test artifacts
+samples/
+test-file/
+*.tmp
+*.swp
+*.swo
+*.log

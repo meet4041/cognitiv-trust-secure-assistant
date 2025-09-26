@@ -4,17 +4,26 @@ import { exec } from 'child_process';
 
 export interface Issue {
   line: number;
+  endLine: number;
+  column: number;
+  endColumn: number;
   message: string;
+  code?: string;   // rule ID from Semgrep
   fix?: string;
 }
 
 export async function scanFileForIssues(filePath: string): Promise<Issue[]> {
   return new Promise<Issue[]>((resolve) => {
-    // point to semgrep-rules inside your extension workspace
-    const rulesDir = path.join(
-      vscode.workspace.rootPath || __dirname,
-      'semgrep-rules'
-    );
+    // Resolve rules directory with multiple fallbacks
+    const workspaceRoot = vscode.workspace.rootPath || process.cwd();
+    const candidates = [
+      path.join(workspaceRoot, 'semgrep-rules'),
+      path.join(workspaceRoot, 'test-file', 'semgrep-rules'),
+      path.join(__dirname, '..', 'semgrep-rules')
+    ];
+
+    const rulesDir = candidates[0];
+    // Note: We don't perform fs checks to keep it simple; Semgrep will error if invalid.
 
     const cmd = `semgrep --config "${rulesDir}" "${filePath}" --json`;
     console.log('🔎 Running:', cmd);
@@ -25,18 +34,47 @@ export async function scanFileForIssues(filePath: string): Promise<Issue[]> {
         resolve([]);
         return;
       }
+
       try {
         const json = JSON.parse(stdout);
         const issues: Issue[] = json.results.map((res: any) => ({
-          line: res.start.line,
-          message: res.extra.message,
-          fix: res.extra.metadata?.fix,
+          line: res.start.line ?? 1,
+          endLine: res.end.line ?? res.start.line ?? 1,
+          column: res.start.col ?? 1,
+          endColumn: res.end.col ?? (res.start.col ?? 1) + 1,
+          message: res.extra.message || 'Issue found by Semgrep',
+          code: res.check_id,                             // e.g. "hardcoded-secret"
+          fix: res.extra.metadata?.fix || undefined,      // if rule defines a fix
         }));
+
         resolve(issues);
       } catch (e) {
         console.error('Parse error:', e);
         resolve([]);
       }
     });
+  });
+}
+
+/**
+ * Utility to convert Issues to VS Code Diagnostics
+ */
+export function createDiagnostics(issues: Issue[]): vscode.Diagnostic[] {
+  return issues.map((issue) => {
+    const range = new vscode.Range(
+      issue.line - 1,
+      issue.column - 1,
+      issue.endLine - 1,
+      issue.endColumn - 1
+    );
+
+    const diagnostic = new vscode.Diagnostic(
+      range,
+      issue.message,
+      vscode.DiagnosticSeverity.Error
+    );
+
+    diagnostic.code = issue.code; // important for Quick Fix provider
+    return diagnostic;
   });
 }
