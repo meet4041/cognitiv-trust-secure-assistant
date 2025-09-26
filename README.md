@@ -52,14 +52,6 @@ npm run compile
 - When invoked from a diagnostic, it maps the diagnostic range into an `Issue` and calls `applyQuickFix` from `fixes.ts`.
 - If an `Issue.fix` is provided by the rule’s metadata, the replacement is applied. Otherwise a message indicates no quick fix is available.
 
-## Packaging
-To create a `.vsix` package:
-```bash
-npm install -g @vscode/vsce
-vsce package
-```
-Then install the generated `.vsix` from the Extensions view (`…` menu → Install from VSIX).
-
 ## Development
 - Build once: `npm run compile`
 - Watch mode: `npm run watch`
