@@ -1,9 +1,9 @@
 {
-  "name": "cognitiv-meet-ok",
-  "displayName": "Cognitiv Secure Code Assistant",
+  "name": "Cognitiv-Trust-Secure-Assistant",
+  "displayName": "Cognitiv Trust Secure Assistant",
   "description": "Detects and fixes insecure code patterns using Semgrep.",
-  "version": "0.0.1",
-  "publisher": "meetgandhi",
+  "version": "1.0.0",
+  "publisher": "meet4041",
   "license": "MIT",
   "engines": {
     "vscode": "^1.80.0"
@@ -14,6 +14,10 @@
     "onSaveTextDocument",
     "onCommand:cognitiv.scanCode"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/meet4041/cognitiv-trust-secure-assistant"
+  },
   "contributes": {
     "commands": [
       {
