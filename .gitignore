@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+out/
+dist/
+
+# VS Code
+.vscode/
+.vscode-test/
+
+# Extension package
+*.vsix
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Coverage
+coverage/
+
+# OS files
+.DS_Store
+
+# Env
+.env
+.env.*.local
