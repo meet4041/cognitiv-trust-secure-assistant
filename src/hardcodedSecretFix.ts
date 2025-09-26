@@ -33,10 +33,8 @@ export class HardcodedSecretQuickFixProvider implements vscode.CodeActionProvide
     fix.isPreferred = true;
 
     const lineText = document.getText(range);
-    // capture the variable name on LHS
     const match = lineText.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/);
     const varName = match ? match[1] : 'SECRET';
-
     const replacement = `${varName} = os.getenv("${varName}")`;
 
     fix.edit = new vscode.WorkspaceEdit();

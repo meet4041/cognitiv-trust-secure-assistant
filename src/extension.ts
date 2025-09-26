@@ -6,12 +6,11 @@ import { applyQuickFix } from './fixes';
 let diagnosticCollection: vscode.DiagnosticCollection;
 
 export function activate(context: vscode.ExtensionContext) {
-  console.log('✅ Cognitiv Secure Code Assistant activated.');
+  console.log('Cognitiv Secure Code Assistant activated.');
 
   diagnosticCollection = vscode.languages.createDiagnosticCollection('cognitiv');
   context.subscriptions.push(diagnosticCollection);
 
-  // Command: Manual scan
   context.subscriptions.push(
     vscode.commands.registerCommand('cognitiv.scanCode', async () => {
       const editor = vscode.window.activeTextEditor;
@@ -20,7 +19,6 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  // Hook: Scan on save – only for Python files
   context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument(async (doc) => {
       if (doc.languageId === 'python') {
@@ -30,7 +28,6 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  // Code-action (Quick-Fix) provider
   context.subscriptions.push(
     vscode.languages.registerCodeActionsProvider(
       { language: 'python' },
@@ -39,7 +36,6 @@ export function activate(context: vscode.ExtensionContext) {
     )
   );
 
-  // Example prompt enrichment usage (optional)
   vscode.workspace.onDidChangeTextDocument((event) => {
     if (event.document.languageId === 'markdown') {
       const enriched = enrichPrompt(event.document.getText());
@@ -48,9 +44,6 @@ export function activate(context: vscode.ExtensionContext) {
   });
 }
 
-/**
- * Scans a document with Semgrep and reports the diagnostics.
- */
 async function scanAndReport(doc: vscode.TextDocument) {
   const issues: Issue[] = await scanFileForIssues(doc.fileName);
   console.log('🔎 Issues found:', issues);
@@ -62,14 +55,10 @@ async function scanAndReport(doc: vscode.TextDocument) {
     return;
   }
 
-  // Use the helper from scanner.ts
   const diagnostics = createDiagnostics(issues);
   diagnosticCollection.set(doc.uri, diagnostics);
 }
 
-/**
- * Code-Action provider that displays “Apply Fix” in the light-bulb menu.
- */
 class CognitivQuickFixProvider implements vscode.CodeActionProvider {
   provideCodeActions(
     document: vscode.TextDocument,
@@ -97,7 +86,6 @@ class CognitivQuickFixProvider implements vscode.CodeActionProvider {
   }
 }
 
-// Register the actual command used by the Quick-Fix action
 vscode.commands.registerCommand('cognitiv.applyQuickFix', (doc: vscode.TextDocument, diag: vscode.Diagnostic) => {
   applyQuickFix(doc, {
     line: diag.range.start.line + 1,

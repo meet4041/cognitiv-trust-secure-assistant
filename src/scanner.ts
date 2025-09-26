@@ -8,13 +8,12 @@ export interface Issue {
   column: number;
   endColumn: number;
   message: string;
-  code?: string;   // rule ID from Semgrep
+  code?: string;  
   fix?: string;
 }
 
 export async function scanFileForIssues(filePath: string): Promise<Issue[]> {
   return new Promise<Issue[]>((resolve) => {
-    // Resolve rules directory with multiple fallbacks
     const workspaceRoot = vscode.workspace.rootPath || process.cwd();
     const candidates = [
       path.join(workspaceRoot, 'semgrep-rules'),
@@ -23,8 +22,6 @@ export async function scanFileForIssues(filePath: string): Promise<Issue[]> {
     ];
 
     const rulesDir = candidates[0];
-    // Note: We don't perform fs checks to keep it simple; Semgrep will error if invalid.
-
     const cmd = `semgrep --config "${rulesDir}" "${filePath}" --json`;
     console.log('🔎 Running:', cmd);
 
@@ -43,8 +40,8 @@ export async function scanFileForIssues(filePath: string): Promise<Issue[]> {
           column: res.start.col ?? 1,
           endColumn: res.end.col ?? (res.start.col ?? 1) + 1,
           message: res.extra.message || 'Issue found by Semgrep',
-          code: res.check_id,                             // e.g. "hardcoded-secret"
-          fix: res.extra.metadata?.fix || undefined,      // if rule defines a fix
+          code: res.check_id,                             
+          fix: res.extra.metadata?.fix || undefined,      
         }));
 
         resolve(issues);
@@ -56,9 +53,6 @@ export async function scanFileForIssues(filePath: string): Promise<Issue[]> {
   });
 }
 
-/**
- * Utility to convert Issues to VS Code Diagnostics
- */
 export function createDiagnostics(issues: Issue[]): vscode.Diagnostic[] {
   return issues.map((issue) => {
     const range = new vscode.Range(
@@ -74,7 +68,7 @@ export function createDiagnostics(issues: Issue[]): vscode.Diagnostic[] {
       vscode.DiagnosticSeverity.Error
     );
 
-    diagnostic.code = issue.code; // important for Quick Fix provider
+    diagnostic.code = issue.code; 
     return diagnostic;
   });
 }

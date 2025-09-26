@@ -1,8 +1,6 @@
 import * as vscode from 'vscode';
 import { Issue } from './scanner';
 
-// Issue type now imported from scanner
-
 export async function applyQuickFix(doc: vscode.TextDocument, issue: Issue) {
     if (!issue.fix) {
         vscode.window.showInformationMessage('No quick fix available for this issue.');
@@ -20,5 +18,5 @@ export async function applyQuickFix(doc: vscode.TextDocument, issue: Issue) {
         editBuilder.replace(lineRange, issue.fix!);
     });
 
-    vscode.window.showInformationMessage('✅ Fix applied!');
+    vscode.window.showInformationMessage('Fix applied!');
 }
